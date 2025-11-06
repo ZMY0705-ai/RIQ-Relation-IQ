@@ -1,0 +1,1712 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RelationIQ - 关系评估系统</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#9A8C98',
+                        secondary: '#C9ADA7',
+                        accent: '#4A4E69',
+                        background: '#F2E9E4',
+                        text: '#22223B',
+                        success: '#A7C4A0',
+                        warning: '#E6B89C',
+                        danger: '#D4A5A5'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .sidebar {
+            width: 250px;
+            transition: all 0.3s;
+            background-color: #4A4E69;
+        }
+        .main-content {
+            margin-left: 250px;
+            transition: all 0.3s;
+            background-color: #F2E9E4;
+        }
+        .collapsed .sidebar {
+            width: 70px;
+        }
+        .collapsed .main-content {
+            margin-left: 70px;
+        }
+        .drawer {
+            transform: translateX(100%);
+            transition: transform 0.3s ease-in-out;
+        }
+        .drawer.open {
+            transform: translateX(0);
+        }
+        .profile-card {
+            transition: all 0.2s ease;
+            background-color: white;
+        }
+        .profile-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .risk-high {
+            background-color: #FADBD8;
+            color: #C0392B;
+        }
+        .risk-medium {
+            background-color: #FCF3CF;
+            color: #D68910;
+        }
+        .risk-low {
+            background-color: #D5F5E3;
+            color: #239B56;
+        }
+        .page {
+            display: none;
+        }
+        .page.active {
+            display: block;
+        }
+        .star-rating button {
+            font-size: 1.2rem;
+            transition: color 0.2s;
+        }
+        .star-rating button.active {
+            color: #F39C12;
+        }
+        .criteria-item {
+            transition: all 0.2s;
+        }
+        .criteria-item:hover {
+            background-color: #f9fafb;
+        }
+        .radar-chart-container {
+            height: 250px;
+        }
+        .nav-item.active {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-right: 3px solid #9A8C98;
+        }
+        .card {
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+        }
+        .btn-primary {
+            background-color: #9A8C98;
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #8A7C88;
+        }
+        .btn-secondary {
+            background-color: #C9ADA7;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background-color: #B99D97;
+        }
+        .section-title {
+            color: #4A4E69;
+            border-left: 4px solid #9A8C98;
+            padding-left: 12px;
+        }
+        .sub-criteria {
+            margin-left: 20px;
+            border-left: 2px solid #E2E8F0;
+            padding-left: 15px;
+        }
+        .dragging {
+            opacity: 0.6;
+        }
+        .delete-btn {
+            transition: all 0.2s;
+        }
+        .delete-btn:hover {
+            background-color: #EF4444;
+            color: white;
+        }
+    </style>
+</head>
+<body class="bg-background text-text">
+    <!-- 应用容器 -->
+    <div class="app-container min-h-screen flex">
+        <!-- 侧边栏导航 -->
+        <div class="sidebar text-white fixed h-full overflow-y-auto z-10">
+            <div class="p-4 border-b border-gray-600">
+                <div class="flex items-center justify-between">
+                    <h1 class="text-xl font-bold">RelationIQ</h1>
+                    <button class="toggle-sidebar p-1 rounded hover:bg-gray-700 text-white">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <nav class="mt-6">
+                <a href="#" class="nav-item active flex items-center px-4 py-3 text-white hover:bg-gray-700" data-page="profiles">
+                    <i class="fas fa-users w-6 text-center mr-3"></i>
+                    <span class="nav-text">对象库</span>
+                </a>
+                <a href="#" class="nav-item flex items-center px-4 py-3 text-white hover:bg-gray-700" data-page="personal">
+                    <i class="fas fa-user w-6 text-center mr-3"></i>
+                    <span class="nav-text">个人中心</span>
+                </a>
+            </nav>
+            
+            <div class="mt-8 px-4">
+                <h3 class="text-xs font-semibold text-gray-300 uppercase tracking-wide mb-2">快捷操作</h3>
+                <button class="w-full bg-secondary text-white py-2 rounded-md text-sm font-medium flex items-center justify-center mb-2">
+                    <i class="fas fa-download mr-2"></i> 导出数据
+                </button>
+                <button class="w-full bg-gray-700 text-white py-2 rounded-md text-sm font-medium flex items-center justify-center">
+                    <i class="fas fa-upload mr-2"></i> 导入数据
+                </button>
+            </div>
+        </div>
+        
+        <!-- 主内容区 -->
+        <div class="main-content flex-1 p-6">
+            <!-- 对象库页面 -->
+            <div id="profiles-page" class="page active">
+                <div class="flex justify-between items-center mb-6">
+                    <h1 class="text-2xl font-bold">对象库</h1>
+                    <div class="flex space-x-2">
+                        <div class="relative">
+                            <input type="text" placeholder="搜索对象..." class="pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-primary focus:border-primary">
+                            <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+                        </div>
+                        <select id="sort-profiles" class="border border-gray-300 rounded-md focus:ring-primary focus:border-primary py-2 px-3">
+                            <option value="score-desc">按得分从高到低</option>
+                            <option value="score-asc">按得分从低到高</option>
+                            <option value="date-desc">按添加时间从新到旧</option>
+                            <option value="date-asc">按添加时间从旧到新</option>
+                            <option value="custom">自定义排序</option>
+                        </select>
+                        <button class="btn-primary px-4 py-2 rounded-md flex items-center" id="add-profile-btn">
+                            <i class="fas fa-plus mr-2"></i> 新建对象
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="profiles-container">
+                    <!-- 对象卡片将通过JS动态生成 -->
+                </div>
+                
+                <!-- 空状态 -->
+                <div id="empty-state" class="text-center py-12">
+                    <div class="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-user-plus text-gray-500 text-2xl"></i>
+                    </div>
+                    <h3 class="text-lg font-medium mb-2">暂无评估对象</h3>
+                    <p class="text-gray-600 mb-6">点击"新建对象"按钮添加第一个评估对象</p>
+                    <button class="btn-primary px-4 py-2 rounded-md font-medium" id="empty-add-btn">
+                        <i class="fas fa-plus mr-2"></i> 新建对象
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 个人中心页面 -->
+            <div id="personal-page" class="page">
+                <div class="max-w-4xl mx-auto">
+                    <h1 class="text-2xl font-bold mb-6">个人中心</h1>
+                    
+                    <div class="space-y-6">
+                        <!-- 基本信息 -->
+                        <div class="card p-6">
+                            <h2 class="section-title text-lg font-semibold mb-4">
+                                <i class="fas fa-id-card text-primary mr-2"></i>
+                                基本信息
+                            </h2>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium mb-1">姓名</label>
+                                    <input type="text" class="w-full p-2 border border-gray-300 rounded-md focus:ring-primary focus:border-primary" placeholder="您的姓名" id="personal-name">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium mb-1">年龄</label>
+                                    <input type="number" class="w-full p-2 border border-gray-300 rounded-md focus:ring-primary focus:border-primary" placeholder="年龄" id="personal-age">
+                                </div>
+                                <div class="md:col-span-2">
+                                    <label class="block text-sm font-medium mb-1">理想伴侣描述</label>
+                                    <textarea class="w-full p-2 border border-gray-300 rounded-md focus:ring-primary focus:border-primary" rows="3" placeholder="描述您理想中的伴侣..." id="personal-ideal"></textarea>
+                                </div>
+                            </div>
+                            
+                            <button class="mt-4 btn-primary px-4 py-2 rounded-md text-sm font-medium" id="save-personal-info">
+                                <i class="fas fa-save mr-1"></i> 保存基本信息
+                            </button>
+                        </div>
+                        
+                        <!-- 自我评估 -->
+                        <div class="card p-6">
+                            <h2 class="section-title text-lg font-semibold mb-4">
+                                <i class="fas fa-chart-line text-primary mr-2"></i>
+                                自我评估
+                            </h2>
+                            
+                            <div class="mb-6">
+                                <h3 class="font-medium mb-2">择偶优势与劣势</h3>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium mb-1">我的优势</label>
+                                        <textarea class="w-full p-2 border border-gray-300 rounded-md focus:ring-primary focus:border-primary" rows="3" placeholder="列出您在关系中的优势..." id="self-advantages"></textarea>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium mb-1">我的劣势</label>
+                                        <textarea class="w-full p-2 border border-gray-300 rounded-md focus:ring-primary focus:border-primary" rows="3" placeholder="列出您需要改进的方面..." id="self-disadvantages"></textarea>
+                                    </div>
+                                </div>
+                                <button class="mt-2 btn-secondary px-4 py-2 rounded-md text-sm font-medium" id="save-self-assessment">
+                                    <i class="fas fa-save mr-1"></i> 保存自我评估
+                                </button>
+                            </div>
+                            
+                            <div>
+                                <h3 class="font-medium mb-2">个人特质评估</h3>
+                                <div class="space-y-4" id="self-assessment-criteria">
+                                    <!-- 自我评估标准将在这里动态生成 -->
+                                </div>
+                                
+                                <div class="mt-6 p-4 bg-gray-50 rounded-lg">
+                                    <div class="flex justify-between items-center mb-4">
+                                        <span class="font-medium">自我评估总分</span>
+                                        <span class="text-xl font-bold text-primary" id="self-weighted-score">0</span>
+                                    </div>
+                                    <div class="radar-chart-container">
+                                        <canvas id="self-radar-chart"></canvas>
+                                    </div>
+                                    <div class="mt-4 grid grid-cols-2 gap-2 text-xs" id="self-radar-legend">
+                                        <!-- 雷达图图例将通过JS动态生成 -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 评估标准 -->
+                        <div class="card p-6">
+                            <h2 class="section-title text-lg font-semibold mb-4">
+                                <i class="fas fa-list-check text-primary mr-2"></i>
+                                评估标准
+                            </h2>
+                            
+                            <div class="space-y-6" id="assessment-criteria">
+                                <!-- 评估标准将通过JS动态生成 -->
+                            </div>
+                            
+                            <button class="mt-4 btn-primary px-4 py-2 rounded-md text-sm font-medium" id="add-category-btn">
+                                <i class="fas fa-plus mr-1"></i> 添加评估大类
+                            </button>
+                        </div>
+                        
+                        <!-- 原则系统 -->
+                        <div class="card p-6">
+                            <h2 class="section-title text-lg font-semibold mb-4">
+                                <i class="fas fa-balance-scale text-primary mr-2"></i>
+                                原则系统
+                            </h2>
+                            
+                            <div class="space-y-4">
+                                <div>
+                                    <h3 class="font-medium text-danger mb-2">🚫 红线清单</h3>
+                                    <div class="space-y-2" id="red-lines">
+                                        <!-- 红线将通过JS动态生成 -->
+                                    </div>
+                                    <button class="add-item-btn text-sm text-danger mt-2 flex items-center" data-type="red-line">
+                                        <i class="fas fa-plus mr-1"></i> 添加红线
+                                    </button>
+                                </div>
+                                
+                                <div>
+                                    <h3 class="font-medium text-accent mb-2">📋 恋爱准则</h3>
+                                    <div class="space-y-2" id="relationship-guidelines">
+                                        <!-- 准则将通过JS动态生成 -->
+                                    </div>
+                                    <button class="add-item-btn text-sm text-accent mt-2 flex items-center" data-type="guideline">
+                                        <i class="fas fa-plus mr-1"></i> 添加准则
+                                    </button>
+                                </div>
+                                
+                                <div>
+                                    <h3 class="font-medium text-success mb-2">⚖️ 非协商条款</h3>
+                                    <div class="space-y-2" id="non-negotiables">
+                                        <!-- 非协商条款将通过JS动态生成 -->
+                                    </div>
+                                    <button class="add-item-btn text-sm text-success mt-2 flex items-center" data-type="non-negotiable">
+                                        <i class="fas fa-plus mr-1"></i> 添加条款
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 档案抽屉 -->
+        <div class="drawer fixed inset-y-0 right-0 w-full max-w-2xl bg-white shadow-xl z-20 overflow-y-auto">
+            <div class="p-4 border-b border-gray-200 sticky top-0 bg-white">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-lg font-semibold" id="drawer-title">新建评估对象</h2>
+                    <button class="close-drawer p-2 rounded-full hover:bg-gray-100">
+                        <i class="fas fa-times text-gray-500"></i>
+                    </button>
+                </div>
+                
+                <!-- 标签导航 -->
+                <div class="tabs flex mt-4 border-b border-gray-200 overflow-x-auto">
+                    <button class="tab-btn py-2 px-4 font-medium text-sm border-b-2 border-primary text-primary whitespace-nowrap" data-tab="basic">
+                        基础信息
+                    </button>
+                    <button class="tab-btn py-2 px-4 font-medium text-sm text-gray-500 hover:text-gray-700 whitespace-nowrap" data-tab="assessment">
+                        关系评估
+                    </button>
+                    <button class="tab-btn py-2 px-4 font-medium text-sm text-gray-500 hover:text-gray-700 whitespace-nowrap" data-tab="interaction">
+                        互动记录
+                    </button>
+                    <button class="tab-btn py-2 px-4 font-medium text-sm text-gray-500 hover:text-gray-700 whitespace-nowrap" data-tab="evaluation">
+                        综合评估
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 标签内容 -->
+            <div class="p-4">
+                <!-- 基础信息标签页 -->
+                <div id="tab-basic" class="tab-content active">
+                    <form id="basic-info-form">
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium mb-1">姓名</label>
+                                <input type="text" id="profile-name" class="w-full p-2 border border-gray-300 rounded-md focus:ring-primary focus:border-primary" placeholder="输入姓名" required>
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium mb-1">年龄</label>
+                                    <input type="number" id="profile-age" class="w-full p-2 border border-gray-300 rounded-md focus:ring-primary focus:border-primary" placeholder="年龄">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium mb-1">职业</label>
+                                    <input type="text" id="profile-occupation" class="w-full p-2 border border-gray-300 rounded-md focus:ring-primary focus:border-primary" placeholder="职业">
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium mb-1">相遇背景</label>
+                                <textarea id="profile-meeting" class="w-full p-2 border border-gray-300 rounded-md focus:ring-primary focus:border-primary" rows="3" placeholder="描述如何认识的，第一印象等"></textarea>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium mb-1">联系方式</label>
+                                <input type="text" id="profile-contact" class="w-full p-2 border border-gray-300 rounded-md focus:ring-primary focus:border-primary" placeholder="电话/微信等">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium mb-1">关系类型</label>
+                                <div class="flex space-x-4">
+                                    <label class="flex items-center">
+                                        <input type="radio" name="relationship-type" value="short-term" class="mr-2">
+                                        <span>短期关系</span>
+                                    </label>
+                                    <label class="flex items-center">
+                                        <input type="radio" name="relationship-type" value="long-term" class="mr-2" checked>
+                                        <span>长期发展</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                
+                <!-- 关系评估标签页 -->
+                <div id="tab-assessment" class="tab-content">
+                    <div class="space-y-6">
+                        <!-- 总分和雷达图区域 -->
+                        <div class="card p-4">
+                            <div class="flex justify-between items-center mb-4">
+                                <span class="font-medium text-lg">综合评分</span>
+                                <span class="text-2xl font-bold text-primary" id="weighted-score">0</span>
+                            </div>
+                            <div class="radar-chart-container">
+                                <canvas id="radar-chart"></canvas>
+                            </div>
+                            <div class="mt-4 grid grid-cols-2 gap-2 text-xs" id="radar-legend">
+                                <!-- 雷达图图例将通过JS动态生成 -->
+                            </div>
+                        </div>
+                        
+                        <!-- 各项得分详情 -->
+                        <div id="assessment-criteria-container">
+                            <!-- 评估标准将在这里动态生成 -->
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 互动记录标签页 -->
+                <div id="tab-interaction" class="tab-content">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-md font-medium">互动记录</h3>
+                        <button class="btn-primary px-3 py-1 rounded-md text-sm flex items-center" id="add-interaction-btn">
+                            <i class="fas fa-plus mr-1"></i> 添加记录
+                        </button>
+                    </div>
+                    
+                    <div class="space-y-4" id="interaction-list">
+                        <!-- 互动记录将在这里动态生成 -->
+                    </div>
+                </div>
+                
+                <!-- 综合评估标签页 -->
+                <div id="tab-evaluation" class="tab-content">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-1">核心优势</label>
+                            <textarea id="evaluation-strengths" class="w-full p-2 border border-gray-300 rounded-md focus:ring-primary focus:border-primary" rows="3" placeholder="列出对方的3-5个核心优势"></textarea>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium mb-1">主要缺点</label>
+                            <textarea id="evaluation-weaknesses" class="w-full p-2 border border-gray-300 rounded-md focus:ring-primary focus:border-primary" rows="2" placeholder="列出1-3个主要缺点"></textarea>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium mb-1">吸引力分析</label>
+                            <textarea id="evaluation-attractions" class="w-full p-2 border border-gray-300 rounded-md focus:ring-primary focus:border-primary" rows="2" placeholder="分析对方吸引你的核心特质"></textarea>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium mb-1">潜在风险</label>
+                            <textarea id="evaluation-risks" class="w-full p-2 border border-gray-300 rounded-md focus:ring-primary focus:border-primary" rows="2" placeholder="识别关系中可能存在的风险"></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 底部操作按钮 -->
+            <div class="p-4 border-t border-gray-200 sticky bottom-0 bg-white">
+                <button id="save-profile" class="w-full btn-primary py-2 rounded-md font-medium">
+                    保存档案
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 应用状态
+        let appState = {
+            profiles: [],
+            personalInfo: {
+                name: '',
+                age: '',
+                ideal: '',
+                selfAssessment: {
+                    advantages: '',
+                    disadvantages: '',
+                    criteriaScores: []
+                },
+                categories: [
+                    {
+                        id: 'communication',
+                        name: '沟通能力',
+                        weight: 30,
+                        criteria: [
+                            { id: 'communication-initiative', name: '沟通积极性', description: '主动发起对话、回应及时性', weight: 5 },
+                            { id: 'listening-skills', name: '倾听理解能力', description: '是否专注倾听、能否理解你的感受', weight: 5 },
+                            { id: 'emotional-stability', name: '情绪稳定性', description: '情绪波动频率、抗压能力', weight: 5 }
+                        ]
+                    },
+                    {
+                        id: 'values',
+                        name: '价值观与品质',
+                        weight: 40,
+                        criteria: [
+                            { id: 'honesty', name: '诚实透明', description: '信息真实性、坦诚沟通意愿', weight: 5 },
+                            { id: 'respect-boundaries', name: '边界尊重', description: '尊重个人空间、理解需求', weight: 5 },
+                            { id: 'responsibility', name: '责任感', description: '承诺履行、问题解决主动性', weight: 5 }
+                        ]
+                    },
+                    {
+                        id: 'relationship',
+                        name: '关系处理',
+                        weight: 30,
+                        criteria: [
+                            { id: 'cold-violence-tendency', name: '冷暴力倾向', description: '冲突后处理方式、沉默持续时间', weight: 5, isCritical: true },
+                            { id: 'hot-cold-pattern', name: '忽冷忽热模式', description: '热情与冷淡的切换频率', weight: 5 },
+                            { id: 'conflict-resolution', name: '冲突解决模式', description: '争吵时的表现、解决问题的方式', weight: 5 }
+                        ]
+                    }
+                ],
+                redLines: ['冷暴力', '欺骗', '不尊重边界'],
+                guidelines: ['定期深度沟通', '吵架不过夜', '保持个人空间'],
+                nonNegotiables: ['情绪稳定', '诚实透明', '价值观一致']
+            },
+            currentProfile: null,
+            sortOrder: 'score-desc'
+        };
+
+        // DOM 元素
+        const appContainer = document.querySelector('.app-container');
+        const toggleSidebarBtn = document.querySelector('.toggle-sidebar');
+        const navItems = document.querySelectorAll('.nav-item');
+        const pages = document.querySelectorAll('.page');
+        const drawer = document.querySelector('.drawer');
+        const closeDrawerBtn = document.querySelector('.close-drawer');
+        const addProfileBtns = document.querySelectorAll('#add-profile-btn, #empty-add-btn');
+        const profilesContainer = document.getElementById('profiles-container');
+        const emptyState = document.getElementById('empty-state');
+        const tabBtns = document.querySelectorAll('.tab-btn');
+        const tabContents = document.querySelectorAll('.tab-content');
+        const saveProfileBtn = document.getElementById('save-profile');
+        const addInteractionBtn = document.getElementById('add-interaction-btn');
+        const interactionList = document.getElementById('interaction-list');
+        const radarChartCanvas = document.getElementById('radar-chart');
+        const selfRadarChartCanvas = document.getElementById('self-radar-chart');
+        const assessmentCriteriaContainer = document.getElementById('assessment-criteria-container');
+        const personalCriteriaContainer = document.getElementById('assessment-criteria');
+        const selfAssessmentContainer = document.getElementById('self-assessment-criteria');
+        const addCategoryBtn = document.getElementById('add-category-btn');
+        const savePersonalInfoBtn = document.getElementById('save-personal-info');
+        const saveSelfAssessmentBtn = document.getElementById('save-self-assessment');
+        const addItemBtns = document.querySelectorAll('.add-item-btn');
+        const sortProfilesSelect = document.getElementById('sort-profiles');
+
+        // 初始化
+        function init() {
+            loadData();
+            renderProfiles();
+            setupEventListeners();
+            renderPersonalCategories();
+            renderSelfAssessment();
+            renderPersonalPrinciples();
+            updateEmptyState();
+        }
+
+        // 从localStorage加载数据
+        function loadData() {
+            const savedProfiles = localStorage.getItem('relationiq-profiles');
+            const savedPersonalInfo = localStorage.getItem('relationiq-personal');
+            const savedSortOrder = localStorage.getItem('relationiq-sort');
+            
+            if (savedProfiles) {
+                appState.profiles = JSON.parse(savedProfiles);
+            }
+            
+            if (savedPersonalInfo) {
+                appState.personalInfo = { ...appState.personalInfo, ...JSON.parse(savedPersonalInfo) };
+                // 更新个人中心表单
+                document.getElementById('personal-name').value = appState.personalInfo.name || '';
+                document.getElementById('personal-age').value = appState.personalInfo.age || '';
+                document.getElementById('personal-ideal').value = appState.personalInfo.ideal || '';
+                document.getElementById('self-advantages').value = appState.personalInfo.selfAssessment.advantages || '';
+                document.getElementById('self-disadvantages').value = appState.personalInfo.selfAssessment.disadvantages || '';
+            }
+            
+            if (savedSortOrder) {
+                appState.sortOrder = savedSortOrder;
+                sortProfilesSelect.value = savedSortOrder;
+            }
+        }
+
+        // 保存数据到localStorage
+        function saveData() {
+            localStorage.setItem('relationiq-profiles', JSON.stringify(appState.profiles));
+            localStorage.setItem('relationiq-personal', JSON.stringify(appState.personalInfo));
+            localStorage.setItem('relationiq-sort', appState.sortOrder);
+        }
+
+        // 渲染对象卡片
+        function renderProfiles() {
+            profilesContainer.innerHTML = '';
+            
+            if (appState.profiles.length === 0) {
+                return;
+            }
+            
+            // 根据排序方式对对象进行排序
+            const sortedProfiles = [...appState.profiles];
+            
+            switch(appState.sortOrder) {
+                case 'score-desc':
+                    sortedProfiles.sort((a, b) => (b.assessment?.weightedScore || 0) - (a.assessment?.weightedScore || 0));
+                    break;
+                case 'score-asc':
+                    sortedProfiles.sort((a, b) => (a.assessment?.weightedScore || 0) - (b.assessment?.weightedScore || 0));
+                    break;
+                case 'date-desc':
+                    sortedProfiles.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+                    break;
+                case 'date-asc':
+                    sortedProfiles.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+                    break;
+                case 'custom':
+                    // 保持原顺序
+                    break;
+            }
+            
+            sortedProfiles.forEach(profile => {
+                const card = document.createElement('div');
+                card.className = 'profile-card rounded-lg border border-gray-200 p-4 cursor-pointer relative';
+                card.setAttribute('data-id', profile.id);
+                
+                const timeAgo = getTimeAgo(profile.updatedAt);
+                const riskLevel = calculateRiskLevel(profile);
+                const riskClass = `risk-${riskLevel}`;
+                const totalScore = profile.assessment?.weightedScore || 0;
+                
+                card.innerHTML = `
+                    <!-- 删除按钮 -->
+                    <button class="delete-profile absolute top-2 right-2 p-1 rounded-full bg-gray-100 text-gray-500 hover:bg-red-100 hover:text-red-500 transition-colors z-10" data-id="${profile.id}">
+                        <i class="fas fa-times text-xs"></i>
+                    </button>
+                    
+                    <div class="flex items-start">
+                        <div class="w-12 h-12 bg-primary rounded-full flex items-center justify-center mr-3">
+                            <span class="text-white font-semibold">${profile.name.charAt(0)}</span>
+                        </div>
+                        <div class="flex-1">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <h3 class="font-medium">${profile.name}</h3>
+                                    <span class="inline-block px-2 py-1 text-xs ${
+                                        profile.relationshipType === 'long-term' 
+                                            ? 'bg-primary text-white' 
+                                            : 'bg-secondary text-white'
+                                    } rounded-full mt-1">
+                                        ${profile.relationshipType === 'long-term' 
+                                            ? `长期发展 · ${totalScore}分` 
+                                            : `短期关系`}
+                                    </span>
+                                </div>
+                                <span class="text-xs text-gray-500">${timeAgo}</span>
+                            </div>
+                            <p class="text-sm text-gray-600 mt-2">${
+                                profile.evaluation?.strengths?.[0] || '暂无评估'
+                            }</p>
+                            <div class="flex justify-between items-center mt-3">
+                                <span class="${riskClass} px-2 py-1 text-xs rounded-full">${
+                                    riskLevel === 'high' ? '高风险' : 
+                                    riskLevel === 'medium' ? '中风险' : '低风险'
+                                }</span>
+                                <span class="text-xs text-gray-500">${profile.interactionLogs?.length || 0}次互动</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // 添加点击事件打开档案
+                card.addEventListener('click', (e) => {
+                    // 如果点击的是删除按钮，则不打开档案
+                    if (!e.target.closest('.delete-profile')) {
+                        openProfile(profile);
+                    }
+                });
+                
+                // 添加删除事件
+                const deleteBtn = card.querySelector('.delete-profile');
+                deleteBtn.addEventListener('click', (e) => {
+                    e.stopPropagation(); // 阻止事件冒泡，避免触发卡片点击事件
+                    deleteProfile(profile.id);
+                });
+                
+                profilesContainer.appendChild(card);
+            });
+        }
+
+        // 删除对象
+        function deleteProfile(profileId) {
+            if (confirm('确定要删除这个评估对象吗？此操作不可恢复。')) {
+                // 从数组中移除对象
+                appState.profiles = appState.profiles.filter(profile => profile.id !== profileId);
+                
+                // 保存数据
+                saveData();
+                
+                // 重新渲染对象列表
+                renderProfiles();
+                updateEmptyState();
+                
+                // 如果当前打开的对象被删除，则关闭抽屉
+                if (appState.currentProfile && appState.currentProfile.id === profileId) {
+                    closeDrawer();
+                }
+            }
+        }
+
+        // 计算风险等级
+        function calculateRiskLevel(profile) {
+            if (!profile.assessment || !profile.assessment.criteriaScores) {
+                return 'low';
+            }
+            
+            const totalScore = profile.assessment.weightedScore || 0;
+            
+            // 检查是否有关键指标得分低于2分
+            const hasCriticalLowScore = profile.assessment.criteriaScores.some(score => {
+                const criterion = findCriterionById(score.id);
+                return criterion && criterion.isCritical && score.score < 2;
+            });
+            
+            // 检查低分指标数量（3分以下）
+            const lowScoreCount = profile.assessment.criteriaScores.filter(score => score.score < 3).length;
+            
+            if (hasCriticalLowScore || totalScore < 60) {
+                return 'high';
+            } else if (lowScoreCount > 2 || totalScore < 75) {
+                return 'medium';
+            } else {
+                return 'low';
+            }
+        }
+
+        // 根据ID查找评估标准
+        function findCriterionById(id) {
+            for (const category of appState.personalInfo.categories) {
+                for (const criterion of category.criteria) {
+                    if (criterion.id === id) {
+                        return criterion;
+                    }
+                }
+            }
+            return null;
+        }
+
+        // 打开档案
+        function openProfile(profile) {
+            appState.currentProfile = profile;
+            
+            // 填充表单数据
+            document.getElementById('profile-name').value = profile.name || '';
+            document.getElementById('profile-age').value = profile.age || '';
+            document.getElementById('profile-occupation').value = profile.occupation || '';
+            document.getElementById('profile-meeting').value = profile.meetingContext || '';
+            document.getElementById('profile-contact').value = profile.contact || '';
+            
+            // 设置关系类型
+            document.querySelector(`input[name="relationship-type"][value="${profile.relationshipType}"]`).checked = true;
+            
+            // 设置评估数据
+            renderAssessmentCriteria(profile);
+            
+            // 设置综合评估
+            document.getElementById('evaluation-strengths').value = profile.evaluation?.strengths?.join('\n') || '';
+            document.getElementById('evaluation-weaknesses').value = profile.evaluation?.weaknesses?.join('\n') || '';
+            document.getElementById('evaluation-attractions').value = profile.evaluation?.attractions?.join('\n') || '';
+            document.getElementById('evaluation-risks').value = profile.evaluation?.risks?.join('\n') || '';
+            
+            // 设置互动日志
+            renderInteractionLogs(profile.interactionLogs || []);
+            
+            // 更新抽屉标题
+            document.getElementById('drawer-title').textContent = profile.name;
+            
+            // 打开抽屉
+            openDrawer();
+        }
+
+        // 渲染评估标准
+        function renderAssessmentCriteria(profile = null) {
+            assessmentCriteriaContainer.innerHTML = '';
+            
+            appState.personalInfo.categories.forEach(category => {
+                const categoryElement = document.createElement('div');
+                categoryElement.className = 'card p-4 mb-4';
+                
+                let categoryHTML = `
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="font-medium">${category.name}</h3>
+                        <span class="text-sm text-gray-500">权重: ${category.weight}%</span>
+                    </div>
+                    <div class="sub-criteria">
+                `;
+                
+                category.criteria.forEach(criterion => {
+                    // 获取该标准的评分数据
+                    const profileScore = profile?.assessment?.criteriaScores?.find(s => s.id === criterion.id);
+                    
+                    categoryHTML += `
+                        <div class="criteria-item p-3 border border-gray-200 rounded-lg mb-3">
+                            <div class="flex justify-between items-start mb-2">
+                                <div>
+                                    <span class="font-medium">${criterion.name}</span>
+                                    <p class="text-xs text-gray-500 mt-1">${criterion.description}</p>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <select class="score-select text-sm border rounded p-1" data-criterion="${criterion.id}">
+                                        <option value="0">未评分</option>
+                                        <option value="1" ${profileScore?.score === 1 ? 'selected' : ''}>1分</option>
+                                        <option value="2" ${profileScore?.score === 2 ? 'selected' : ''}>2分</option>
+                                        <option value="3" ${profileScore?.score === 3 ? 'selected' : ''}>3分</option>
+                                        <option value="4" ${profileScore?.score === 4 ? 'selected' : ''}>4分</option>
+                                        <option value="5" ${profileScore?.score === 5 ? 'selected' : ''}>5分</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <textarea class="evidence-input w-full p-2 border border-gray-300 rounded-md text-sm" rows="2" 
+                                      placeholder="记录具体证据..." data-criterion="${criterion.id}">${profileScore?.evidence || ''}</textarea>
+                        </div>
+                    `;
+                });
+                
+                categoryHTML += `</div>`;
+                categoryElement.innerHTML = categoryHTML;
+                assessmentCriteriaContainer.appendChild(categoryElement);
+            });
+            
+            // 添加评分事件监听
+            document.querySelectorAll('.score-select').forEach(select => {
+                select.addEventListener('change', updateWeightedScore);
+            });
+            
+            document.querySelectorAll('.evidence-input').forEach(textarea => {
+                textarea.addEventListener('input', updateWeightedScore);
+            });
+            
+            // 更新加权分数和雷达图
+            updateWeightedScore();
+        }
+
+        // 更新加权分数
+        function updateWeightedScore() {
+            let totalScore = 0;
+            let totalPossibleScore = 0;
+            const criteriaScores = [];
+            const criteriaNames = [];
+            
+            appState.personalInfo.categories.forEach(category => {
+                const categoryWeight = category.weight / 100; // 转换为小数
+                
+                category.criteria.forEach(criterion => {
+                    const scoreSelect = document.querySelector(`.score-select[data-criterion="${criterion.id}"]`);
+                    const score = parseInt(scoreSelect.value) || 0;
+                    
+                    if (score > 0) {
+                        // 每个小项在所属大类中的权重比例
+                        const criterionWeight = criterion.weight / category.criteria.reduce((sum, c) => sum + c.weight, 0);
+                        const weightedScore = score * categoryWeight * criterionWeight * 20; // 转换为100分制
+                        
+                        totalScore += weightedScore;
+                        criteriaScores.push(score);
+                        criteriaNames.push(criterion.name);
+                    }
+                    
+                    // 计算满分情况下的可能得分
+                    const maxScore = 5;
+                    const maxCriterionWeight = criterion.weight / category.criteria.reduce((sum, c) => sum + c.weight, 0);
+                    totalPossibleScore += maxScore * categoryWeight * maxCriterionWeight * 20;
+                });
+            });
+            
+            const weightedScore = totalPossibleScore > 0 ? Math.round(totalScore) : 0;
+            document.getElementById('weighted-score').textContent = weightedScore;
+            
+            // 更新雷达图
+            updateRadarChart(criteriaScores, criteriaNames);
+        }
+
+        // 更新雷达图
+        function updateRadarChart(scores, names) {
+            const ctx = radarChartCanvas.getContext('2d');
+            ctx.clearRect(0, 0, radarChartCanvas.width, radarChartCanvas.height);
+            
+            // 设置雷达图尺寸
+            const centerX = radarChartCanvas.width / 2;
+            const centerY = radarChartCanvas.height / 2;
+            const radius = Math.min(centerX, centerY) * 0.8;
+            
+            // 绘制网格和刻度
+            ctx.strokeStyle = '#E2E8F0';
+            ctx.lineWidth = 1;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = '10px Arial';
+            
+            // 绘制5个同心圆
+            for (let i = 1; i <= 5; i++) {
+                const r = radius * i / 5;
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, r, 0, Math.PI * 2);
+                ctx.stroke();
+                
+                // 添加刻度标签
+                ctx.fillStyle = '#94A3B8';
+                ctx.fillText(i, centerX, centerY - r);
+            }
+            
+            // 绘制维度线
+            const angleStep = (Math.PI * 2) / names.length;
+            ctx.strokeStyle = '#CBD5E1';
+            
+            for (let i = 0; i < names.length; i++) {
+                const angle = i * angleStep;
+                const x = centerX + Math.sin(angle) * radius;
+                const y = centerY - Math.cos(angle) * radius;
+                
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY);
+                ctx.lineTo(x, y);
+                ctx.stroke();
+                
+                // 添加维度标签
+                ctx.fillStyle = '#475569';
+                const labelX = centerX + Math.sin(angle) * (radius + 20);
+                const labelY = centerY - Math.cos(angle) * (radius + 20);
+                ctx.fillText(names[i], labelX, labelY);
+            }
+            
+            // 绘制数据多边形
+            if (scores.length > 0) {
+                ctx.fillStyle = 'rgba(154, 140, 152, 0.2)';
+                ctx.strokeStyle = 'rgb(154, 140, 152)';
+                ctx.lineWidth = 2;
+                
+                ctx.beginPath();
+                for (let i = 0; i < scores.length; i++) {
+                    const angle = i * angleStep;
+                    const r = radius * scores[i] / 5;
+                    const x = centerX + Math.sin(angle) * r;
+                    const y = centerY - Math.cos(angle) * r;
+                    
+                    if (i === 0) {
+                        ctx.moveTo(x, y);
+                    } else {
+                        ctx.lineTo(x, y);
+                    }
+                }
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+                
+                // 绘制数据点
+                ctx.fillStyle = 'rgb(154, 140, 152)';
+                for (let i = 0; i < scores.length; i++) {
+                    const angle = i * angleStep;
+                    const r = radius * scores[i] / 5;
+                    const x = centerX + Math.sin(angle) * r;
+                    const y = centerY - Math.cos(angle) * r;
+                    
+                    ctx.beginPath();
+                    ctx.arc(x, y, 4, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+            
+            // 更新图例
+            updateRadarLegend(scores, names);
+        }
+
+        // 更新雷达图图例
+        function updateRadarLegend(scores, names) {
+            const legendContainer = document.getElementById('radar-legend');
+            legendContainer.innerHTML = '';
+            
+            names.forEach((name, index) => {
+                const score = scores[index] || 0;
+                const legendItem = document.createElement('div');
+                legendItem.className = 'flex items-center';
+                legendItem.innerHTML = `
+                    <div class="w-3 h-3 rounded-full bg-primary mr-2"></div>
+                    <span class="flex-1 truncate">${name}</span>
+                    <span class="font-medium ml-2">${score}/5</span>
+                `;
+                legendContainer.appendChild(legendItem);
+            });
+        }
+
+        // 渲染自我评估
+        function renderSelfAssessment() {
+            selfAssessmentContainer.innerHTML = '';
+            
+            appState.personalInfo.categories.forEach(category => {
+                const categoryElement = document.createElement('div');
+                categoryElement.className = 'card p-4 mb-4';
+                
+                let categoryHTML = `
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="font-medium">${category.name}</h3>
+                        <span class="text-sm text-gray-500">权重: ${category.weight}%</span>
+                    </div>
+                    <div class="sub-criteria">
+                `;
+                
+                category.criteria.forEach(criterion => {
+                    // 获取该标准的评分数据
+                    const selfScore = appState.personalInfo.selfAssessment.criteriaScores?.find(s => s.id === criterion.id);
+                    
+                    categoryHTML += `
+                        <div class="criteria-item p-3 border border-gray-200 rounded-lg mb-3">
+                            <div class="flex justify-between items-start mb-2">
+                                <div>
+                                    <span class="font-medium">${criterion.name}</span>
+                                    <p class="text-xs text-gray-500 mt-1">${criterion.description}</p>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <select class="self-score-select text-sm border rounded p-1" data-criterion="${criterion.id}">
+                                        <option value="0">未评分</option>
+                                        <option value="1" ${selfScore?.score === 1 ? 'selected' : ''}>1分</option>
+                                        <option value="2" ${selfScore?.score === 2 ? 'selected' : ''}>2分</option>
+                                        <option value="3" ${selfScore?.score === 3 ? 'selected' : ''}>3分</option>
+                                        <option value="4" ${selfScore?.score === 4 ? 'selected' : ''}>4分</option>
+                                        <option value="5" ${selfScore?.score === 5 ? 'selected' : ''}>5分</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <textarea class="self-evidence-input w-full p-2 border border-gray-300 rounded-md text-sm" rows="2" 
+                                      placeholder="记录具体证据..." data-criterion="${criterion.id}">${selfScore?.evidence || ''}</textarea>
+                        </div>
+                    `;
+                });
+                
+                categoryHTML += `</div>`;
+                categoryElement.innerHTML = categoryHTML;
+                selfAssessmentContainer.appendChild(categoryElement);
+            });
+            
+            // 添加评分事件监听
+            document.querySelectorAll('.self-score-select').forEach(select => {
+                select.addEventListener('change', updateSelfWeightedScore);
+            });
+            
+            document.querySelectorAll('.self-evidence-input').forEach(textarea => {
+                textarea.addEventListener('input', updateSelfWeightedScore);
+            });
+            
+            // 更新加权分数和雷达图
+            updateSelfWeightedScore();
+        }
+
+        // 更新自我评估加权分数
+        function updateSelfWeightedScore() {
+            let totalScore = 0;
+            let totalPossibleScore = 0;
+            const criteriaScores = [];
+            const criteriaNames = [];
+            
+            appState.personalInfo.categories.forEach(category => {
+                const categoryWeight = category.weight / 100; // 转换为小数
+                
+                category.criteria.forEach(criterion => {
+                    const scoreSelect = document.querySelector(`.self-score-select[data-criterion="${criterion.id}"]`);
+                    const score = parseInt(scoreSelect.value) || 0;
+                    
+                    if (score > 0) {
+                        // 每个小项在所属大类中的权重比例
+                        const criterionWeight = criterion.weight / category.criteria.reduce((sum, c) => sum + c.weight, 0);
+                        const weightedScore = score * categoryWeight * criterionWeight * 20; // 转换为100分制
+                        
+                        totalScore += weightedScore;
+                        criteriaScores.push(score);
+                        criteriaNames.push(criterion.name);
+                    }
+                    
+                    // 计算满分情况下的可能得分
+                    const maxScore = 5;
+                    const maxCriterionWeight = criterion.weight / category.criteria.reduce((sum, c) => sum + c.weight, 0);
+                    totalPossibleScore += maxScore * categoryWeight * maxCriterionWeight * 20;
+                });
+            });
+            
+            const weightedScore = totalPossibleScore > 0 ? Math.round(totalScore) : 0;
+            document.getElementById('self-weighted-score').textContent = weightedScore;
+            
+            // 更新雷达图
+            updateSelfRadarChart(criteriaScores, criteriaNames);
+        }
+
+        // 更新自我评估雷达图
+        function updateSelfRadarChart(scores, names) {
+            const ctx = selfRadarChartCanvas.getContext('2d');
+            ctx.clearRect(0, 0, selfRadarChartCanvas.width, selfRadarChartCanvas.height);
+            
+            // 设置雷达图尺寸
+            const centerX = selfRadarChartCanvas.width / 2;
+            const centerY = selfRadarChartCanvas.height / 2;
+            const radius = Math.min(centerX, centerY) * 0.8;
+            
+            // 绘制网格和刻度
+            ctx.strokeStyle = '#E2E8F0';
+            ctx.lineWidth = 1;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = '10px Arial';
+            
+            // 绘制5个同心圆
+            for (let i = 1; i <= 5; i++) {
+                const r = radius * i / 5;
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, r, 0, Math.PI * 2);
+                ctx.stroke();
+                
+                // 添加刻度标签
+                ctx.fillStyle = '#94A3B8';
+                ctx.fillText(i, centerX, centerY - r);
+            }
+            
+            // 绘制维度线
+            const angleStep = (Math.PI * 2) / names.length;
+            ctx.strokeStyle = '#CBD5E1';
+            
+            for (let i = 0; i < names.length; i++) {
+                const angle = i * angleStep;
+                const x = centerX + Math.sin(angle) * radius;
+                const y = centerY - Math.cos(angle) * radius;
+                
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY);
+                ctx.lineTo(x, y);
+                ctx.stroke();
+                
+                // 添加维度标签
+                ctx.fillStyle = '#475569';
+                const labelX = centerX + Math.sin(angle) * (radius + 20);
+                const labelY = centerY - Math.cos(angle) * (radius + 20);
+                ctx.fillText(names[i], labelX, labelY);
+            }
+            
+            // 绘制数据多边形
+            if (scores.length > 0) {
+                ctx.fillStyle = 'rgba(201, 173, 167, 0.2)';
+                ctx.strokeStyle = 'rgb(201, 173, 167)';
+                ctx.lineWidth = 2;
+                
+                ctx.beginPath();
+                for (let i = 0; i < scores.length; i++) {
+                    const angle = i * angleStep;
+                    const r = radius * scores[i] / 5;
+                    const x = centerX + Math.sin(angle) * r;
+                    const y = centerY - Math.cos(angle) * r;
+                    
+                    if (i === 0) {
+                        ctx.moveTo(x, y);
+                    } else {
+                        ctx.lineTo(x, y);
+                    }
+                }
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+                
+                // 绘制数据点
+                ctx.fillStyle = 'rgb(201, 173, 167)';
+                for (let i = 0; i < scores.length; i++) {
+                    const angle = i * angleStep;
+                    const r = radius * scores[i] / 5;
+                    const x = centerX + Math.sin(angle) * r;
+                    const y = centerY - Math.cos(angle) * r;
+                    
+                    ctx.beginPath();
+                    ctx.arc(x, y, 4, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+            
+            // 更新图例
+            updateSelfRadarLegend(scores, names);
+        }
+
+        // 更新自我评估雷达图图例
+        function updateSelfRadarLegend(scores, names) {
+            const legendContainer = document.getElementById('self-radar-legend');
+            legendContainer.innerHTML = '';
+            
+            names.forEach((name, index) => {
+                const score = scores[index] || 0;
+                const legendItem = document.createElement('div');
+                legendItem.className = 'flex items-center';
+                legendItem.innerHTML = `
+                    <div class="w-3 h-3 rounded-full bg-secondary mr-2"></div>
+                    <span class="flex-1 truncate">${name}</span>
+                    <span class="font-medium ml-2">${score}/5</span>
+                `;
+                legendContainer.appendChild(legendItem);
+            });
+        }
+
+        // 渲染个人评估标准
+        function renderPersonalCategories() {
+            personalCriteriaContainer.innerHTML = '';
+            
+            appState.personalInfo.categories.forEach((category, categoryIndex) => {
+                const categoryElement = document.createElement('div');
+                categoryElement.className = 'card p-4 mb-4';
+                categoryElement.setAttribute('data-category-index', categoryIndex);
+                
+                let categoryHTML = `
+                    <div class="flex justify-between items-center mb-3">
+                        <div class="flex items-center">
+                            <h3 class="font-medium mr-2">${category.name}</h3>
+                            <span class="text-xs bg-primary text-white px-2 py-1 rounded">权重: ${category.weight}%</span>
+                        </div>
+                        <div class="flex space-x-2">
+                            <button class="add-subcriterion-btn text-sm text-primary" data-category-index="${categoryIndex}">
+                                <i class="fas fa-plus mr-1"></i> 添加小项
+                            </button>
+                            <button class="delete-category text-danger" data-category-index="${categoryIndex}">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="sub-criteria">
+                `;
+                
+                category.criteria.forEach((criterion, criterionIndex) => {
+                    categoryHTML += `
+                        <div class="flex justify-between items-center p-3 border border-gray-200 rounded-lg mb-2">
+                            <div>
+                                <span class="font-medium">${criterion.name}</span>
+                                <p class="text-xs text-gray-500">${criterion.description}</p>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <span class="text-xs text-gray-500">权重: ${criterion.weight}</span>
+                                <button class="delete-criterion text-danger" data-category-index="${categoryIndex}" data-criterion-index="${criterionIndex}">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                categoryHTML += `</div>`;
+                categoryElement.innerHTML = categoryHTML;
+                personalCriteriaContainer.appendChild(categoryElement);
+            });
+            
+            // 添加删除事件
+            document.querySelectorAll('.delete-category').forEach(button => {
+                button.addEventListener('click', function() {
+                    const categoryIndex = parseInt(this.getAttribute('data-category-index'));
+                    appState.personalInfo.categories.splice(categoryIndex, 1);
+                    saveData();
+                    renderPersonalCategories();
+                    renderSelfAssessment();
+                });
+            });
+            
+            // 添加小项事件
+            document.querySelectorAll('.add-subcriterion-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const categoryIndex = parseInt(this.getAttribute('data-category-index'));
+                    const name = prompt('请输入小项名称:');
+                    if (name) {
+                        const description = prompt('请输入小项描述:');
+                        appState.personalInfo.categories[categoryIndex].criteria.push({
+                            id: 'sub-' + Date.now(),
+                            name,
+                            description: description || '',
+                            weight: 5
+                        });
+                        saveData();
+                        renderPersonalCategories();
+                        renderSelfAssessment();
+                    }
+                });
+            });
+            
+            // 删除小项事件
+            document.querySelectorAll('.delete-criterion').forEach(button => {
+                button.addEventListener('click', function() {
+                    const categoryIndex = parseInt(this.getAttribute('data-category-index'));
+                    const criterionIndex = parseInt(this.getAttribute('data-criterion-index'));
+                    appState.personalInfo.categories[categoryIndex].criteria.splice(criterionIndex, 1);
+                    saveData();
+                    renderPersonalCategories();
+                    renderSelfAssessment();
+                });
+            });
+        }
+
+        // 渲染个人原则
+        function renderPersonalPrinciples() {
+            renderPrinciplesList('red-lines', appState.personalInfo.redLines, 'danger');
+            renderPrinciplesList('relationship-guidelines', appState.personalInfo.guidelines, 'accent');
+            renderPrinciplesList('non-negotiables', appState.personalInfo.nonNegotiables, 'success');
+        }
+
+        // 渲染原则列表
+        function renderPrinciplesList(containerId, items, color) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+            
+            items.forEach((item, index) => {
+                const itemElement = document.createElement('div');
+                itemElement.className = 'flex items-center justify-between p-2 bg-gray-50 rounded';
+                itemElement.innerHTML = `
+                    <span>${item}</span>
+                    <button class="delete-item text-${color}-600" data-type="${containerId}" data-index="${index}">
+                        <i class="fas fa-times"></i>
+                    </button>
+                `;
+                container.appendChild(itemElement);
+            });
+            
+            // 添加删除事件
+            container.querySelectorAll('.delete-item').forEach(button => {
+                button.addEventListener('click', function() {
+                    const type = this.getAttribute('data-type');
+                    const index = parseInt(this.getAttribute('data-index'));
+                    
+                    if (type === 'red-lines') {
+                        appState.personalInfo.redLines.splice(index, 1);
+                    } else if (type === 'relationship-guidelines') {
+                        appState.personalInfo.guidelines.splice(index, 1);
+                    } else if (type === 'non-negotiables') {
+                        appState.personalInfo.nonNegotiables.splice(index, 1);
+                    }
+                    
+                    saveData();
+                    renderPersonalPrinciples();
+                });
+            });
+        }
+
+        // 打开抽屉
+        function openDrawer() {
+            drawer.classList.add('open');
+        }
+        
+        // 关闭抽屉
+        function closeDrawer() {
+            drawer.classList.remove('open');
+            appState.currentProfile = null;
+            
+            // 重置表单
+            document.getElementById('basic-info-form').reset();
+            document.querySelector('input[name="relationship-type"][value="long-term"]').checked = true;
+            renderAssessmentCriteria();
+            interactionList.innerHTML = '<p class="text-gray-500 text-center py-4">暂无互动记录</p>';
+        }
+        
+        // 切换标签页
+        function switchTab(tabName) {
+            // 更新标签按钮状态
+            tabBtns.forEach(btn => {
+                if (btn.getAttribute('data-tab') === tabName) {
+                    btn.classList.add('border-primary', 'text-primary');
+                    btn.classList.remove('text-gray-500');
+                } else {
+                    btn.classList.remove('border-primary', 'text-primary');
+                    btn.classList.add('text-gray-500');
+                }
+            });
+            
+            // 更新标签内容
+            tabContents.forEach(content => {
+                if (content.id === `tab-${tabName}`) {
+                    content.classList.add('active');
+                } else {
+                    content.classList.remove('active');
+                }
+            });
+        }
+        
+        // 切换页面
+        function switchPage(pageName) {
+            // 更新页面显示
+            pages.forEach(page => {
+                page.classList.remove('active');
+            });
+            document.getElementById(`${pageName}-page`).classList.add('active');
+            
+            // 更新导航激活状态
+            navItems.forEach(item => {
+                item.classList.remove('active');
+                if (item.getAttribute('data-page') === pageName) {
+                    item.classList.add('active');
+                }
+            });
+        }
+        
+        // 获取时间差
+        function getTimeAgo(date) {
+            const now = new Date();
+            const diffMs = now - new Date(date);
+            const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+            
+            if (diffDays === 0) return '今天';
+            if (diffDays === 1) return '昨天';
+            if (diffDays < 7) return `${diffDays}天前`;
+            if (diffDays < 30) return `${Math.floor(diffDays / 7)}周前`;
+            return `${Math.floor(diffDays / 30)}月前`;
+        }
+        
+        // 更新空状态
+        function updateEmptyState() {
+            if (appState.profiles.length === 0) {
+                emptyState.classList.remove('hidden');
+                profilesContainer.classList.add('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+                profilesContainer.classList.remove('hidden');
+            }
+        }
+
+        // 设置事件监听
+        function setupEventListeners() {
+            // 侧边栏切换
+            toggleSidebarBtn.addEventListener('click', () => {
+                appContainer.classList.toggle('collapsed');
+            });
+            
+            // 导航切换
+            navItems.forEach(item => {
+                item.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const pageName = this.getAttribute('data-page');
+                    switchPage(pageName);
+                });
+            });
+            
+            // 新建对象按钮
+            addProfileBtns.forEach(btn => {
+                btn.addEventListener('click', openDrawer);
+            });
+            
+            // 关闭抽屉
+            closeDrawerBtn.addEventListener('click', closeDrawer);
+            
+            // 标签页切换
+            tabBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const tabName = btn.getAttribute('data-tab');
+                    switchTab(tabName);
+                });
+            });
+            
+            // 添加互动记录
+            addInteractionBtn.addEventListener('click', () => {
+                const date = prompt('请输入互动日期 (YYYY-MM-DD):', new Date().toISOString().split('T')[0]);
+                const type = prompt('请输入互动类型:');
+                const importance = prompt('请输入重要性 (high/medium/low):', 'medium');
+                const description = prompt('请输入互动描述:');
+                
+                if (date && type && importance && description) {
+                    const newInteraction = {
+                        id: Date.now().toString(),
+                        date,
+                        type,
+                        importance,
+                        description
+                    };
+                    
+                    if (!appState.currentProfile.interactionLogs) {
+                        appState.currentProfile.interactionLogs = [];
+                    }
+                    
+                    appState.currentProfile.interactionLogs.push(newInteraction);
+                    renderInteractionLogs(appState.currentProfile.interactionLogs);
+                }
+            });
+            
+            // 保存档案
+            saveProfileBtn.addEventListener('click', () => {
+                // 收集表单数据
+                const name = document.getElementById('profile-name').value;
+                const age = document.getElementById('profile-age').value;
+                const occupation = document.getElementById('profile-occupation').value;
+                const meetingContext = document.getElementById('profile-meeting').value;
+                const contact = document.getElementById('profile-contact').value;
+                const relationshipType = document.querySelector('input[name="relationship-type"]:checked').value;
+                
+                // 收集评估数据
+                const criteriaScores = [];
+                appState.personalInfo.categories.forEach(category => {
+                    category.criteria.forEach(criterion => {
+                        const scoreSelect = document.querySelector(`.score-select[data-criterion="${criterion.id}"]`);
+                        const evidenceInput = document.querySelector(`.evidence-input[data-criterion="${criterion.id}"]`);
+                        
+                        const score = parseInt(scoreSelect.value) || 0;
+                        
+                        if (score > 0) {
+                            criteriaScores.push({
+                                id: criterion.id,
+                                score: score,
+                                evidence: evidenceInput.value
+                            });
+                        }
+                    });
+                });
+                
+                // 计算总分
+                const weightedScore = parseInt(document.getElementById('weighted-score').textContent);
+                
+                const assessment = {
+                    criteriaScores: criteriaScores,
+                    weightedScore: weightedScore
+                };
+                
+                // 收集综合评估
+                const evaluation = {
+                    strengths: document.getElementById('evaluation-strengths').value.split('\n').filter(s => s.trim()),
+                    weaknesses: document.getElementById('evaluation-weaknesses').value.split('\n').filter(s => s.trim()),
+                    attractions: document.getElementById('evaluation-attractions').value.split('\n').filter(s => s.trim()),
+                    risks: document.getElementById('evaluation-risks').value.split('\n').filter(s => s.trim())
+                };
+                
+                // 创建或更新档案
+                const profileData = {
+                    name,
+                    age: age ? parseInt(age) : undefined,
+                    occupation,
+                    meetingContext,
+                    contact,
+                    relationshipType,
+                    assessment,
+                    evaluation,
+                    updatedAt: new Date()
+                };
+                
+                if (appState.currentProfile) {
+                    // 更新现有档案
+                    Object.assign(appState.currentProfile, profileData);
+                } else {
+                    // 创建新档案
+                    profileData.id = Date.now().toString();
+                    profileData.interactionLogs = [];
+                    profileData.createdAt = new Date();
+                    appState.profiles.push(profileData);
+                }
+                
+                // 保存数据
+                saveData();
+                
+                // 更新UI
+                renderProfiles();
+                updateEmptyState();
+                
+                alert('档案已保存！');
+                closeDrawer();
+            });
+            
+            // 添加评估大类
+            addCategoryBtn.addEventListener('click', () => {
+                const name = prompt('请输入评估大类名称:');
+                if (name) {
+                    appState.personalInfo.categories.push({
+                        id: 'category-' + Date.now(),
+                        name,
+                        weight: 20,
+                        criteria: []
+                    });
+                    saveData();
+                    renderPersonalCategories();
+                }
+            });
+            
+            // 保存个人信息
+            savePersonalInfoBtn.addEventListener('click', () => {
+                appState.personalInfo.name = document.getElementById('personal-name').value;
+                appState.personalInfo.age = document.getElementById('personal-age').value;
+                appState.personalInfo.ideal = document.getElementById('personal-ideal').value;
+                saveData();
+                alert('个人信息已保存！');
+            });
+            
+            // 保存自我评估
+            saveSelfAssessmentBtn.addEventListener('click', () => {
+                appState.personalInfo.selfAssessment.advantages = document.getElementById('self-advantages').value;
+                appState.personalInfo.selfAssessment.disadvantages = document.getElementById('self-disadvantages').value;
+                
+                // 收集自我评估数据
+                const criteriaScores = [];
+                appState.personalInfo.categories.forEach(category => {
+                    category.criteria.forEach(criterion => {
+                        const scoreSelect = document.querySelector(`.self-score-select[data-criterion="${criterion.id}"]`);
+                        const evidenceInput = document.querySelector(`.self-evidence-input[data-criterion="${criterion.id}"]`);
+                        
+                        const score = parseInt(scoreSelect.value) || 0;
+                        
+                        if (score > 0) {
+                            criteriaScores.push({
+                                id: criterion.id,
+                                score: score,
+                                evidence: evidenceInput.value
+                            });
+                        }
+                    });
+                });
+                
+                appState.personalInfo.selfAssessment.criteriaScores = criteriaScores;
+                saveData();
+                alert('自我评估已保存！');
+            });
+            
+            // 添加原则项目
+            addItemBtns.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const type = this.getAttribute('data-type');
+                    const item = prompt('请输入内容:');
+                    if (item) {
+                        if (type === 'red-line') {
+                            appState.personalInfo.redLines.push(item);
+                        } else if (type === 'guideline') {
+                            appState.personalInfo.guidelines.push(item);
+                        } else if (type === 'non-negotiable') {
+                            appState.personalInfo.nonNegotiables.push(item);
+                        }
+                        saveData();
+                        renderPersonalPrinciples();
+                    }
+                });
+            });
+            
+            // 排序功能
+            sortProfilesSelect.addEventListener('change', function() {
+                appState.sortOrder = this.value;
+                saveData();
+                renderProfiles();
+            });
+        }
+
+        // 渲染互动日志
+        function renderInteractionLogs(interactions) {
+            interactionList.innerHTML = '';
+            
+            if (interactions.length === 0) {
+                interactionList.innerHTML = '<p class="text-gray-500 text-center py-4">暂无互动记录</p>';
+                return;
+            }
+            
+            interactions.forEach(interaction => {
+                const interactionElement = document.createElement('div');
+                interactionElement.className = 'interaction-item p-3 border border-gray-200 rounded-lg';
+                interactionElement.innerHTML = `
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <span class="font-medium">${interaction.type}</span>
+                            <span class="ml-2 text-xs ${
+                                interaction.importance === 'high' ? 'bg-danger text-white' :
+                                interaction.importance === 'medium' ? 'bg-warning text-white' :
+                                'bg-gray-200 text-gray-700'
+                            } px-2 py-1 rounded-full">${
+                                interaction.importance === 'high' ? '重要' :
+                                interaction.importance === 'medium' ? '中等' : '一般'
+                            }</span>
+                        </div>
+                        <span class="text-xs text-gray-500">${interaction.date}</span>
+                    </div>
+                    <p class="text-sm text-gray-600">${interaction.description}</p>
+                `;
+                interactionList.appendChild(interactionElement);
+            });
+        }
+
+        // 初始化应用
+        init();
+    </script>
+</body>
+</html>
