@@ -2,11 +2,11 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>RelationIQ - 关系评估系统</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>❤️</text></svg>">
     <script>
         tailwind.config = {
             theme: {
@@ -26,6 +26,7 @@
         }
     </script>
     <style>
+        /* 基础样式 */
         .sidebar {
             width: 250px;
             transition: all 0.3s;
@@ -141,6 +142,81 @@
             background-color: #EF4444;
             color: white;
         }
+        
+        /* 移动端优化 */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 60px;
+            }
+            .main-content {
+                margin-left: 60px;
+                padding: 10px;
+            }
+            .collapsed .sidebar {
+                width: 0;
+            }
+            .collapsed .main-content {
+                margin-left: 0;
+            }
+            .nav-text {
+                display: none;
+            }
+            .nav-item {
+                justify-content: center;
+                padding: 12px 0;
+            }
+            .nav-item i {
+                margin-right: 0;
+            }
+            #profiles-page h1 {
+                font-size: 1.5rem;
+            }
+            .grid {
+                grid-template-columns: 1fr !important;
+            }
+            .drawer {
+                width: 100%;
+                max-width: 100%;
+            }
+            .profile-card {
+                margin-bottom: 15px;
+            }
+            button, .btn-primary, .btn-secondary {
+                min-height: 44px;
+                padding: 10px 16px;
+            }
+            input, textarea, select {
+                font-size: 16px; /* 防止iOS缩放 */
+            }
+            .radar-chart-container {
+                height: 200px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .main-content {
+                padding: 8px;
+            }
+            .card {
+                padding: 15px;
+            }
+            .tabs {
+                font-size: 12px;
+            }
+            .tab-btn {
+                padding: 8px 12px;
+            }
+        }
+        
+        /* 触摸设备优化 */
+        @media (hover: none) {
+            .profile-card:hover {
+                transform: none;
+            }
+            .criteria-item:hover {
+                background-color: transparent;
+            }
+        }
     </style>
 </head>
 <body class="bg-background text-text">
@@ -150,7 +226,8 @@
         <div class="sidebar text-white fixed h-full overflow-y-auto z-10">
             <div class="p-4 border-b border-gray-600">
                 <div class="flex items-center justify-between">
-                    <h1 class="text-xl font-bold">RelationIQ</h1>
+                    <h1 class="text-xl font-bold hidden md:block">RelationIQ</h1>
+                    <h1 class="text-xl font-bold md:hidden">RIQ</h1>
                     <button class="toggle-sidebar p-1 rounded hover:bg-gray-700 text-white">
                         <i class="fas fa-bars"></i>
                     </button>
@@ -169,12 +246,12 @@
             </nav>
             
             <div class="mt-8 px-4">
-                <h3 class="text-xs font-semibold text-gray-300 uppercase tracking-wide mb-2">快捷操作</h3>
+                <h3 class="text-xs font-semibold text-gray-300 uppercase tracking-wide mb-2 hidden md:block">快捷操作</h3>
                 <button class="w-full bg-secondary text-white py-2 rounded-md text-sm font-medium flex items-center justify-center mb-2">
-                    <i class="fas fa-download mr-2"></i> 导出数据
+                    <i class="fas fa-download mr-2"></i> <span class="hidden md:inline">导出数据</span>
                 </button>
                 <button class="w-full bg-gray-700 text-white py-2 rounded-md text-sm font-medium flex items-center justify-center">
-                    <i class="fas fa-upload mr-2"></i> 导入数据
+                    <i class="fas fa-upload mr-2"></i> <span class="hidden md:inline">导入数据</span>
                 </button>
             </div>
         </div>
@@ -186,7 +263,7 @@
                 <div class="flex justify-between items-center mb-6">
                     <h1 class="text-2xl font-bold">对象库</h1>
                     <div class="flex space-x-2">
-                        <div class="relative">
+                        <div class="relative hidden md:block">
                             <input type="text" placeholder="搜索对象..." class="pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-primary focus:border-primary">
                             <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
                         </div>
@@ -198,7 +275,7 @@
                             <option value="custom">自定义排序</option>
                         </select>
                         <button class="btn-primary px-4 py-2 rounded-md flex items-center" id="add-profile-btn">
-                            <i class="fas fa-plus mr-2"></i> 新建对象
+                            <i class="fas fa-plus mr-2"></i> <span class="hidden md:inline">新建对象</span>
                         </button>
                     </div>
                 </div>
@@ -595,6 +672,25 @@
             renderSelfAssessment();
             renderPersonalPrinciples();
             updateEmptyState();
+            
+            // 移动端检测和优化
+            if (isMobileDevice()) {
+                optimizeForMobile();
+            }
+        }
+
+        // 检测移动设备
+        function isMobileDevice() {
+            return (typeof window.orientation !== "undefined") || (navigator.userAgent.indexOf('IEMobile') !== -1);
+        }
+
+        // 移动端优化
+        function optimizeForMobile() {
+            // 自动折叠侧边栏
+            appContainer.classList.add('collapsed');
+            
+            // 调整一些触摸交互
+            document.addEventListener('touchstart', function() {}, {passive: true});
         }
 
         // 从localStorage加载数据
@@ -885,49 +981,72 @@
         function updateWeightedScore() {
             let totalScore = 0;
             let totalPossibleScore = 0;
-            const criteriaScores = [];
-            const criteriaNames = [];
+            const categoryScores = [];
+            const categoryNames = [];
             
             appState.personalInfo.categories.forEach(category => {
                 const categoryWeight = category.weight / 100; // 转换为小数
+                let categoryTotalScore = 0;
+                let categoryPossibleScore = 0;
+                let hasScores = false;
                 
                 category.criteria.forEach(criterion => {
                     const scoreSelect = document.querySelector(`.score-select[data-criterion="${criterion.id}"]`);
                     const score = parseInt(scoreSelect.value) || 0;
                     
                     if (score > 0) {
+                        hasScores = true;
                         // 每个小项在所属大类中的权重比例
                         const criterionWeight = criterion.weight / category.criteria.reduce((sum, c) => sum + c.weight, 0);
                         const weightedScore = score * categoryWeight * criterionWeight * 20; // 转换为100分制
                         
                         totalScore += weightedScore;
-                        criteriaScores.push(score);
-                        criteriaNames.push(criterion.name);
+                        categoryTotalScore += score;
                     }
                     
                     // 计算满分情况下的可能得分
                     const maxScore = 5;
                     const maxCriterionWeight = criterion.weight / category.criteria.reduce((sum, c) => sum + c.weight, 0);
                     totalPossibleScore += maxScore * categoryWeight * maxCriterionWeight * 20;
+                    categoryPossibleScore += maxScore;
                 });
+                
+                // 计算大类平均分（如果有评分的话）
+                if (hasScores) {
+                    const categoryAvgScore = categoryTotalScore / category.criteria.length;
+                    categoryScores.push(categoryAvgScore);
+                    categoryNames.push(category.name);
+                }
             });
             
             const weightedScore = totalPossibleScore > 0 ? Math.round(totalScore) : 0;
             document.getElementById('weighted-score').textContent = weightedScore;
             
-            // 更新雷达图
-            updateRadarChart(criteriaScores, criteriaNames);
+            // 更新雷达图 - 现在使用大类数据
+            updateRadarChart(categoryScores, categoryNames);
         }
 
-        // 更新雷达图
+        // 更新雷达图 - 按大类绘制
         function updateRadarChart(scores, names) {
             const ctx = radarChartCanvas.getContext('2d');
+            
+            // 清除画布
             ctx.clearRect(0, 0, radarChartCanvas.width, radarChartCanvas.height);
+            
+            if (scores.length === 0) {
+                // 如果没有数据，显示提示
+                ctx.fillStyle = '#9CA3AF';
+                ctx.font = '14px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('请先进行评估以生成雷达图', radarChartCanvas.width / 2, radarChartCanvas.height / 2);
+                return;
+            }
             
             // 设置雷达图尺寸
             const centerX = radarChartCanvas.width / 2;
             const centerY = radarChartCanvas.height / 2;
-            const radius = Math.min(centerX, centerY) * 0.8;
+            const radius = Math.min(centerX, centerY) * 0.7;
             
             // 绘制网格和刻度
             ctx.strokeStyle = '#E2E8F0';
@@ -945,7 +1064,7 @@
                 
                 // 添加刻度标签
                 ctx.fillStyle = '#94A3B8';
-                ctx.fillText(i, centerX, centerY - r);
+                ctx.fillText(i.toString(), centerX, centerY - r - 5);
             }
             
             // 绘制维度线
@@ -964,46 +1083,44 @@
                 
                 // 添加维度标签
                 ctx.fillStyle = '#475569';
-                const labelX = centerX + Math.sin(angle) * (radius + 20);
-                const labelY = centerY - Math.cos(angle) * (radius + 20);
+                const labelX = centerX + Math.sin(angle) * (radius + 25);
+                const labelY = centerY - Math.cos(angle) * (radius + 25);
                 ctx.fillText(names[i], labelX, labelY);
             }
             
             // 绘制数据多边形
-            if (scores.length > 0) {
-                ctx.fillStyle = 'rgba(154, 140, 152, 0.2)';
-                ctx.strokeStyle = 'rgb(154, 140, 152)';
-                ctx.lineWidth = 2;
+            ctx.fillStyle = 'rgba(154, 140, 152, 0.2)';
+            ctx.strokeStyle = 'rgb(154, 140, 152)';
+            ctx.lineWidth = 2;
+            
+            ctx.beginPath();
+            for (let i = 0; i < scores.length; i++) {
+                const angle = i * angleStep;
+                const r = radius * scores[i] / 5; // 将分数转换为半径比例
+                const x = centerX + Math.sin(angle) * r;
+                const y = centerY - Math.cos(angle) * r;
+                
+                if (i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            }
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            
+            // 绘制数据点
+            ctx.fillStyle = 'rgb(154, 140, 152)';
+            for (let i = 0; i < scores.length; i++) {
+                const angle = i * angleStep;
+                const r = radius * scores[i] / 5;
+                const x = centerX + Math.sin(angle) * r;
+                const y = centerY - Math.cos(angle) * r;
                 
                 ctx.beginPath();
-                for (let i = 0; i < scores.length; i++) {
-                    const angle = i * angleStep;
-                    const r = radius * scores[i] / 5;
-                    const x = centerX + Math.sin(angle) * r;
-                    const y = centerY - Math.cos(angle) * r;
-                    
-                    if (i === 0) {
-                        ctx.moveTo(x, y);
-                    } else {
-                        ctx.lineTo(x, y);
-                    }
-                }
-                ctx.closePath();
+                ctx.arc(x, y, 4, 0, Math.PI * 2);
                 ctx.fill();
-                ctx.stroke();
-                
-                // 绘制数据点
-                ctx.fillStyle = 'rgb(154, 140, 152)';
-                for (let i = 0; i < scores.length; i++) {
-                    const angle = i * angleStep;
-                    const r = radius * scores[i] / 5;
-                    const x = centerX + Math.sin(angle) * r;
-                    const y = centerY - Math.cos(angle) * r;
-                    
-                    ctx.beginPath();
-                    ctx.arc(x, y, 4, 0, Math.PI * 2);
-                    ctx.fill();
-                }
             }
             
             // 更新图例
@@ -1022,7 +1139,7 @@
                 legendItem.innerHTML = `
                     <div class="w-3 h-3 rounded-full bg-primary mr-2"></div>
                     <span class="flex-1 truncate">${name}</span>
-                    <span class="font-medium ml-2">${score}/5</span>
+                    <span class="font-medium ml-2">${score.toFixed(1)}/5</span>
                 `;
                 legendContainer.appendChild(legendItem);
             });
@@ -1094,49 +1211,72 @@
         function updateSelfWeightedScore() {
             let totalScore = 0;
             let totalPossibleScore = 0;
-            const criteriaScores = [];
-            const criteriaNames = [];
+            const categoryScores = [];
+            const categoryNames = [];
             
             appState.personalInfo.categories.forEach(category => {
                 const categoryWeight = category.weight / 100; // 转换为小数
+                let categoryTotalScore = 0;
+                let categoryPossibleScore = 0;
+                let hasScores = false;
                 
                 category.criteria.forEach(criterion => {
                     const scoreSelect = document.querySelector(`.self-score-select[data-criterion="${criterion.id}"]`);
                     const score = parseInt(scoreSelect.value) || 0;
                     
                     if (score > 0) {
+                        hasScores = true;
                         // 每个小项在所属大类中的权重比例
                         const criterionWeight = criterion.weight / category.criteria.reduce((sum, c) => sum + c.weight, 0);
                         const weightedScore = score * categoryWeight * criterionWeight * 20; // 转换为100分制
                         
                         totalScore += weightedScore;
-                        criteriaScores.push(score);
-                        criteriaNames.push(criterion.name);
+                        categoryTotalScore += score;
                     }
                     
                     // 计算满分情况下的可能得分
                     const maxScore = 5;
                     const maxCriterionWeight = criterion.weight / category.criteria.reduce((sum, c) => sum + c.weight, 0);
                     totalPossibleScore += maxScore * categoryWeight * maxCriterionWeight * 20;
+                    categoryPossibleScore += maxScore;
                 });
+                
+                // 计算大类平均分（如果有评分的话）
+                if (hasScores) {
+                    const categoryAvgScore = categoryTotalScore / category.criteria.length;
+                    categoryScores.push(categoryAvgScore);
+                    categoryNames.push(category.name);
+                }
             });
             
             const weightedScore = totalPossibleScore > 0 ? Math.round(totalScore) : 0;
             document.getElementById('self-weighted-score').textContent = weightedScore;
             
-            // 更新雷达图
-            updateSelfRadarChart(criteriaScores, criteriaNames);
+            // 更新雷达图 - 现在使用大类数据
+            updateSelfRadarChart(categoryScores, categoryNames);
         }
 
-        // 更新自我评估雷达图
+        // 更新自我评估雷达图 - 按大类绘制
         function updateSelfRadarChart(scores, names) {
             const ctx = selfRadarChartCanvas.getContext('2d');
+            
+            // 清除画布
             ctx.clearRect(0, 0, selfRadarChartCanvas.width, selfRadarChartCanvas.height);
+            
+            if (scores.length === 0) {
+                // 如果没有数据，显示提示
+                ctx.fillStyle = '#9CA3AF';
+                ctx.font = '14px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('请先进行自我评估以生成雷达图', selfRadarChartCanvas.width / 2, selfRadarChartCanvas.height / 2);
+                return;
+            }
             
             // 设置雷达图尺寸
             const centerX = selfRadarChartCanvas.width / 2;
             const centerY = selfRadarChartCanvas.height / 2;
-            const radius = Math.min(centerX, centerY) * 0.8;
+            const radius = Math.min(centerX, centerY) * 0.7;
             
             // 绘制网格和刻度
             ctx.strokeStyle = '#E2E8F0';
@@ -1154,7 +1294,7 @@
                 
                 // 添加刻度标签
                 ctx.fillStyle = '#94A3B8';
-                ctx.fillText(i, centerX, centerY - r);
+                ctx.fillText(i.toString(), centerX, centerY - r - 5);
             }
             
             // 绘制维度线
@@ -1173,46 +1313,44 @@
                 
                 // 添加维度标签
                 ctx.fillStyle = '#475569';
-                const labelX = centerX + Math.sin(angle) * (radius + 20);
-                const labelY = centerY - Math.cos(angle) * (radius + 20);
+                const labelX = centerX + Math.sin(angle) * (radius + 25);
+                const labelY = centerY - Math.cos(angle) * (radius + 25);
                 ctx.fillText(names[i], labelX, labelY);
             }
             
             // 绘制数据多边形
-            if (scores.length > 0) {
-                ctx.fillStyle = 'rgba(201, 173, 167, 0.2)';
-                ctx.strokeStyle = 'rgb(201, 173, 167)';
-                ctx.lineWidth = 2;
+            ctx.fillStyle = 'rgba(201, 173, 167, 0.2)';
+            ctx.strokeStyle = 'rgb(201, 173, 167)';
+            ctx.lineWidth = 2;
+            
+            ctx.beginPath();
+            for (let i = 0; i < scores.length; i++) {
+                const angle = i * angleStep;
+                const r = radius * scores[i] / 5; // 将分数转换为半径比例
+                const x = centerX + Math.sin(angle) * r;
+                const y = centerY - Math.cos(angle) * r;
+                
+                if (i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            }
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            
+            // 绘制数据点
+            ctx.fillStyle = 'rgb(201, 173, 167)';
+            for (let i = 0; i < scores.length; i++) {
+                const angle = i * angleStep;
+                const r = radius * scores[i] / 5;
+                const x = centerX + Math.sin(angle) * r;
+                const y = centerY - Math.cos(angle) * r;
                 
                 ctx.beginPath();
-                for (let i = 0; i < scores.length; i++) {
-                    const angle = i * angleStep;
-                    const r = radius * scores[i] / 5;
-                    const x = centerX + Math.sin(angle) * r;
-                    const y = centerY - Math.cos(angle) * r;
-                    
-                    if (i === 0) {
-                        ctx.moveTo(x, y);
-                    } else {
-                        ctx.lineTo(x, y);
-                    }
-                }
-                ctx.closePath();
+                ctx.arc(x, y, 4, 0, Math.PI * 2);
                 ctx.fill();
-                ctx.stroke();
-                
-                // 绘制数据点
-                ctx.fillStyle = 'rgb(201, 173, 167)';
-                for (let i = 0; i < scores.length; i++) {
-                    const angle = i * angleStep;
-                    const r = radius * scores[i] / 5;
-                    const x = centerX + Math.sin(angle) * r;
-                    const y = centerY - Math.cos(angle) * r;
-                    
-                    ctx.beginPath();
-                    ctx.arc(x, y, 4, 0, Math.PI * 2);
-                    ctx.fill();
-                }
             }
             
             // 更新图例
@@ -1231,7 +1369,7 @@
                 legendItem.innerHTML = `
                     <div class="w-3 h-3 rounded-full bg-secondary mr-2"></div>
                     <span class="flex-1 truncate">${name}</span>
-                    <span class="font-medium ml-2">${score}/5</span>
+                    <span class="font-medium ml-2">${score.toFixed(1)}/5</span>
                 `;
                 legendContainer.appendChild(legendItem);
             });
